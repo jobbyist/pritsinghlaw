@@ -25,6 +25,85 @@ app.use((req, res, next) => {
   next();
 });
 
+// Google Gemini chat endpoint with streaming
+app.post('/api/gemini-chat', async (req, res) => {
+  const { messages } = req.body;
+  
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'Gemini API key not configured' });
+  }
+
+  try {
+    // Load system instructions
+    let systemPrompt = '';
+    try {
+      const systemInstructions = await fs.readFile('docs/system_instructions.md', 'utf8');
+      const trainingScript = await fs.readFile('docs/training_script.md', 'utf8');
+      systemPrompt = `${systemInstructions}\n\n--- Additional Training Context ---\n${trainingScript}`;
+    } catch (error) {
+      console.log('Using default system prompt');
+      systemPrompt = `You are the AI assistant for the Law Offices of Pritpal Singh, a California real estate law firm. 
+You provide general information only - no legal advice. No attorney-client relationship is formed through this chat.
+Direct users to call (510) 443-2123 or book a consultation for specific legal matters.`;
+    }
+
+    // Convert messages to Gemini format
+    const geminiContents = messages.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+
+    // Use gemini-2.0-flash-exp model (free)
+    const model = 'gemini-2.0-flash-exp';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    
+    const payload = {
+      contents: geminiContents,
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 1500,
+      }
+    };
+
+    console.log(`Using Gemini model: ${model}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Gemini API error: ${error}`);
+    }
+
+    const result = await response.json();
+    const botText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (botText) {
+      res.json({ 
+        success: true,
+        message: botText 
+      });
+    } else {
+      throw new Error('Invalid API response from Gemini');
+    }
+  } catch (error) {
+    console.error('Gemini chat error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
+
 // OpenAI chat endpoint with streaming
 app.post('/api/chat', async (req, res) => {
   const { messages, tools } = req.body;
