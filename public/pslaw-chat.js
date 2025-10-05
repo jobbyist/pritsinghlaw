@@ -358,52 +358,29 @@
     showTypingIndicator();
     
     try {
-      if (state.currentController) state.currentController.abort();
-      state.currentController = new AbortController();
-      
       const context = await getRelevantContext(message);
       const apiMessages = state.messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
       if (context) {
         apiMessages.unshift({ role: 'system', content: `Relevant information from website:\n${context}` });
       }
       
-      const response = await fetch(CONFIG.apiEndpoint, {
+      // Use Gemini API endpoint instead of OpenAI
+      const response = await fetch('/api/gemini-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
-        signal: state.currentController.signal
+        body: JSON.stringify({ messages: apiMessages })
       });
+      
       if (!response.ok) throw new Error('Failed to get response');
       
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantMessage = '';
+      const result = await response.json();
       hideTypingIndicator();
       
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.choices?.[0]?.delta?.content) {
-                assistantMessage += parsed.choices[0].delta.content;
-                updateLastMessage(assistantMessage);
-              }
-              if (parsed.choices?.[0]?.delta?.tool_calls) {
-                handleToolCalls(parsed.choices[0].delta.tool_calls);
-              }
-            } catch (e) { /* Skip invalid JSON */ }
-          }
-        }
+      if (result.success && result.message) {
+        addMessage('assistant', result.message);
+      } else {
+        throw new Error(result.error || 'Invalid response from server');
       }
-      if (assistantMessage) addMessage('assistant', assistantMessage);
     } catch (error) {
       hideTypingIndicator();
       if (error.name !== 'AbortError') {
@@ -414,7 +391,6 @@
       input.disabled = false;
       sendBtn.disabled = false;
       state.isTyping = false;
-      state.currentController = null;
     }
     dispatchChatEvent('send', { message });
   }
