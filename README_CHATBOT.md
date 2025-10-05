@@ -1,29 +1,34 @@
 # PSLaw AI Chatbot Documentation
 
 ## Overview
-Production-ready AI chatbot for Law Offices of Pritpal Singh website with OpenAI integration, knowledge base, and appointment booking capabilities.
+Production-ready AI chatbot for Law Offices of Pritpal Singh website with **Google Gemini** integration, knowledge base, and appointment booking capabilities.
 
 ## Features
 - **Floating Action Button**: Orange rounded-square button with "P" logo at bottom-right
 - **Responsive Modal**: Full-height on mobile, centered card on desktop
-- **OpenAI Integration**: Server-side proxy for secure API calls
+- **Google Gemini Integration**: Free AI model with server-side proxy for secure API calls
 - **Knowledge Base**: Pre-loaded information about firm services
 - **Suggestion Chips**: Quick action buttons for common queries
 - **Calendly Integration**: Real-time availability and direct booking links
 - **Zapier Webhook**: Lead capture for follow-up
 
 ## Environment Variables
-Required in Replit Secrets:
-- `OPENAI_API_KEY` - Your OpenAI API key (REQUIRED)
-- `OPENAI_MODEL` - Model to use (optional, defaults to gpt-4o-mini)
+Required in `.env` file or Replit Secrets:
+- `GEMINI_API_KEY` - Your Google Gemini API key (REQUIRED) - Get free at https://aistudio.google.com/app/apikey
 - `CALENDLY_ACCESS_TOKEN` - Calendly Personal Access Token (REQUIRED for booking)
 - `CALENDLY_USER_URI` - Your Calendly user URI from API (REQUIRED for booking)
 - `ZAPIER_WEBHOOK_URL` - For lead capture (optional)
 
+### Setting Up Google Gemini
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Get API key" or "Create API key"
+4. Copy the API key and add it to your `.env` file as `GEMINI_API_KEY`
+
 ### Setting Up Calendly Integration
 1. Get your Personal Access Token from [Calendly Developer Portal](https://developer.calendly.com/api-docs/005832c83e164-get-current-user)
 2. Get your User URI by calling the `/users/me` endpoint with your token
-3. Add both values to Replit Secrets
+3. Add both values to `.env` file
 
 ## Architecture
 
@@ -33,9 +38,10 @@ Required in Replit Secrets:
 - `/public/assets/pslaw-chat-icon.svg` - Fallback icon
 
 ### Backend Server
-- `/server.js` - Express server with OpenAI proxy
+- `/server.js` - Express server with Gemini API proxy
 - Routes:
-  - `POST /api/chat` - Streaming chat endpoint
+  - `POST /api/gemini-chat` - Gemini chat endpoint (replaces OpenAI)
+  - `POST /api/chat` - Legacy OpenAI streaming endpoint (deprecated)
   - `GET /api/calendly-slots` - Available appointment times
   - `POST /api/intake-webhook` - Lead capture webhook
 
@@ -97,7 +103,7 @@ Modify CSS variables in `/public/pslaw-chat.css`:
 ✅ Click opens modal chat
 ✅ Modal is responsive (mobile/desktop)
 ✅ Suggestion chips work
-✅ Messages stream from OpenAI
+✅ Messages received from Google Gemini API
 ✅ System prompt enforces no legal advice
 ✅ Quick action links work
 ✅ Escape key closes modal
@@ -106,4 +112,4 @@ Modify CSS variables in `/public/pslaw-chat.css`:
 ## Maintenance
 - Update knowledge base: Run `node scripts/build-knowledge.mjs`
 - Check server logs: View Server workflow output
-- Monitor API usage: Check OpenAI dashboard
+- Monitor API usage: Check [Google AI Studio dashboard](https://aistudio.google.com/)
